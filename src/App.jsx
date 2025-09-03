@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import MainMenu from './components/MainMenu';
 import GameSetup from './components/GameSetup';
 import Board from './components/Board';
+import BoardClick from './components/BoardClick';
+import BoardDrag from './components/BoardDrag';
+import { GAMEPLAY_VARIANT } from './gameplayConfig';
 import GuessReveal from './components/GuessReveal';
 import Gallery from './components/Gallery';
 import MultiplayerLobby from './components/MultiplayerLobby';
@@ -183,16 +186,29 @@ function App() {
       )}
 
       {appState === 'playing' && !showGallery && (
-        <Board
-          currentPlayer={currentPlayer}
-          onTurnEnd={handleTurnEnd}
-          onSave={handleSaveShape}
-          gameState={appState}
-          isGameActive={true}
-          onShapeComplete={handleShapeComplete}
-          gameMode={gameMode}
-          multiplayerData={multiplayerData}
-        />
+        GAMEPLAY_VARIANT === 'drag' ? (
+          <BoardDrag
+            currentPlayer={currentPlayer}
+            onTurnEnd={handleTurnEnd}
+            onSave={handleSaveShape}
+            gameState={appState}
+            isGameActive={true}
+            onShapeComplete={handleShapeComplete}
+            gameMode={gameMode}
+            multiplayerData={multiplayerData}
+          />
+        ) : (
+          <BoardClick
+            currentPlayer={currentPlayer}
+            onTurnEnd={handleTurnEnd}
+            onSave={handleSaveShape}
+            gameState={appState}
+            isGameActive={true}
+            onShapeComplete={handleShapeComplete}
+            gameMode={gameMode}
+            multiplayerData={multiplayerData}
+          />
+        )
       )}
 
       {appState === 'reveal' && !showGallery && (
