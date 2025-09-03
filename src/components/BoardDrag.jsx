@@ -57,7 +57,6 @@ export default function BoardDrag({
   // Cleanup effect to prevent memory leaks and stuck event listeners
   useEffect(() => {
     return () => {
-      console.log('[DRAG DEBUG] Component unmounting - cleaning up event listeners');
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
     };
@@ -66,7 +65,6 @@ export default function BoardDrag({
   // Reset on setup/new game
   useEffect(() => {
     if (gameState === 'setup') {
-      console.log('[DRAG DEBUG] Resetting state due to gameState change to setup');
       setTiles(initialTiles);
       setMoveCount(0);
       setStatusMessage('');
@@ -80,7 +78,6 @@ export default function BoardDrag({
 
   // Debug: Monitor dragState changes
   useEffect(() => {
-    console.log('[DRAG DEBUG] dragState changed:', dragState);
     dragStateRef.current = dragState; // Keep ref in sync
   }, [dragState]);
 
@@ -112,7 +109,6 @@ export default function BoardDrag({
     };
 
     const handleGameStateUpdate = (data) => {
-      console.log('[DRAG DEBUG] Game state updated from server:', data);
       if (data.tiles) {
         setTiles(data.tiles);
         setMoveCount(data.moveCount || 0);
@@ -122,7 +118,6 @@ export default function BoardDrag({
     };
 
     const handleMoveAccepted = (data) => {
-      console.log('[DRAG DEBUG] Move accepted by server:', data);
       if (data.tiles) {
         setTiles(data.tiles);
         setMoveCount(data.moveCount || 0);
@@ -151,25 +146,20 @@ export default function BoardDrag({
   
   // **NEW: Function to handle the end of the snap animation**
   const onSnapAnimationEnd = (finalMove) => {
-      console.log('[DRAG DEBUG] Snap animation ended, committing move:', finalMove);
       
       // This is where the actual state update happens.
       if (isMultiplayer) {
           if (isGameLocked && lockOwner === currentPlayerId) {
               try {
-                  console.log('[DRAG DEBUG] Submitting move to server');
                   socketService.makeLockedMove(dragState.index, { x: finalMove.x, y: finalMove.y });
                   setStatusMessage('Submitting move...');
               } catch (err) {
-                  console.log('[DRAG DEBUG] Error submitting move:', err);
                   setStatusMessage('Error: ' + err.message);
               }
           } else {
-              console.log('[DRAG DEBUG] Lost lock, cannot submit move');
               setStatusMessage('Lost lock.');
           }
       } else {
-          console.log('[DRAG DEBUG] Offline mode - updating tiles directly');
           const newTiles = tiles.map((t, i) => i === dragState.index ? { x: finalMove.x, y: finalMove.y } : t);
           setTiles(newTiles);
           setMoveCount(c => c + 1);
@@ -178,7 +168,6 @@ export default function BoardDrag({
           setTimeout(() => setStatusMessage(''), 1500);
       }
       
-      console.log('[DRAG DEBUG] Cleaning up drag state');
       // Clean up all temporary states.
       setSnapAnimation({ isSnapping: false, ghostPos: { x: 0, y: 0 } });
       setDragState({ index: null, isDragging: false, ghostPos: { x: 0, y: 0 }, isPressed: false });
@@ -188,18 +177,8 @@ export default function BoardDrag({
   const handlePointerUp = (e) => {
     const currentDragState = dragStateRef.current;
     const currentAllowed = allowedRef.current;
-    
-    console.log('[DRAG DEBUG] PointerUp triggered', { 
-      isDragging: currentDragState.isDragging,
-      isPressed: currentDragState.isPressed,
-      dragIndex: currentDragState.index,
-      allowedMovesCount: currentAllowed.length,
-      clientX: e.clientX,
-      clientY: e.clientY
-    });
-    
+
     // IMMEDIATELY clean up event listeners and pressed state to prevent stuck drags
-    console.log('[DRAG DEBUG] Removing event listeners and clearing pressed state');
     window.removeEventListener('pointermove', handlePointerMove);
     window.removeEventListener('pointerup', handlePointerUp);
     
@@ -208,14 +187,12 @@ export default function BoardDrag({
 
     // If no drag happened, just reset everything
     if (!currentDragState.isDragging) {
-      console.log('[DRAG DEBUG] PointerUp with no active drag - just a click, resetting all state');
       setDragState({ index: null, isDragging: false, ghostPos: { x: 0, y: 0 }, isPressed: false });
       setAllowed([]);
       return;
     }
 
     if (currentAllowed.length === 0) {
-      console.log('[DRAG DEBUG] No allowed moves available, force cleanup');
       setStatusMessage('No valid moves available');
       setDragState({ index: null, isDragging: false, ghostPos: { x: 0, y: 0 }, isPressed: false });
       setAllowed([]);
@@ -226,7 +203,6 @@ export default function BoardDrag({
     const pointerX = e.clientX - rect.left;
     const pointerY = e.clientY - rect.top;
 
-    console.log('[DRAG DEBUG] Finding nearest allowed move from pointer position:', { pointerX, pointerY });
 
     const nearest = currentAllowed.reduce((best, move) => {
       const moveCenterX = move.x * cellSize + cellSize / 2;
@@ -239,14 +215,12 @@ export default function BoardDrag({
 
     if (nearest) {
       const { move } = nearest;
-      console.log('[DRAG DEBUG] Selected nearest move:', move);
       
       const finalPixelPos = {
           x: move.x * cellSize + cellSize / 2,
           y: (gridSize - 1 - move.y) * cellSize + cellSize / 2,
       };
 
-      console.log('[DRAG DEBUG] Starting snap animation to:', finalPixelPos);
       
       setSnapAnimation({
           isSnapping: true,
@@ -256,7 +230,6 @@ export default function BoardDrag({
       setDragState(prev => ({ ...prev, isDragging: false, isPressed: false }));
 
     } else {
-       console.log('[DRAG DEBUG] No valid nearest move found - resetting');
        setDragState({ index: null, isDragging: false, ghostPos: { x: 0, y: 0 }, isPressed: false });
        setAllowed([]);
     }
@@ -269,16 +242,9 @@ export default function BoardDrag({
     e.stopPropagation();
     
     const currentDragState = dragStateRef.current;
-    console.log('[DRAG DEBUG] PointerMove triggered', { 
-      dragIndex: currentDragState.index, 
-      isDragging: currentDragState.isDragging,
-      isPressed: currentDragState.isPressed,
-      clientX: e.clientX,
-      clientY: e.clientY
-    });
+
     
     if (currentDragState.index === null || !currentDragState.isPressed) {
-      console.log('[DRAG DEBUG] PointerMove ignored - no drag index or not pressed');
       return;
     }
     
@@ -289,15 +255,12 @@ export default function BoardDrag({
     
     // Start dragging immediately when minimum distance is reached
     if (!currentDragState.isDragging && distance > MIN_DRAG_DISTANCE) {
-      console.log('[DRAG DEBUG] Starting immediate drag - distance threshold reached:', distance);
       
       // Calculate allowed moves immediately
       if (!isMultiplayer) {
         const moves = allowedMoves(tiles, currentDragState.index);
-        console.log('[DRAG DEBUG] Calculated allowed moves:', moves);
         
         if (moves.length === 0) {
-          console.log('[DRAG DEBUG] No valid moves - cancelling and cleaning up');
           setStatusMessage('Block cannot be moved');
           setTimeout(() => setStatusMessage(''), 1500);
           setDragState({ index: null, isDragging: false, ghostPos: { x: 0, y: 0 }, isPressed: false });
@@ -313,7 +276,6 @@ export default function BoardDrag({
       
       // Activate drag immediately - but only if we have valid moves or it's multiplayer
       if (!isMultiplayer && allowedRef.current.length === 0) {
-        console.log('[DRAG DEBUG] Preventing drag activation - no allowed moves');
         return;
       }
       
@@ -330,7 +292,6 @@ export default function BoardDrag({
       const rect = boardRef.current.getBoundingClientRect();
       const newGhostPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
       
-      console.log('[DRAG DEBUG] Updating ghost position:', newGhostPos);
       
       setDragState(prev => ({
         ...prev,
@@ -346,16 +307,9 @@ export default function BoardDrag({
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('[DRAG DEBUG] PointerDown triggered', { 
-      isGameActive, 
-      gameState, 
-      currentDragIndex: dragState.index,
-      clientX: e.clientX,
-      clientY: e.clientY
-    });
+
     
     if (!isGameActive || gameState !== 'playing' || dragState.index !== null) {
-      console.log('[DRAG DEBUG] PointerDown blocked:', { isGameActive, gameState, dragIndex: dragState.index });
       return;
     }
 
@@ -366,27 +320,16 @@ export default function BoardDrag({
     const row = gridSize - 1 - Math.floor(y / cellSize);
     const index = idxAt(col, row);
 
-    console.log('[DRAG DEBUG] Pointer coordinates:', { 
-      boardX: x, 
-      boardY: y, 
-      col, 
-      row, 
-      tileIndex: index,
-      boardRect: rect
-    });
 
     if (index === -1) {
-      console.log('[DRAG DEBUG] No tile at position, aborting');
       return;
     }
     
     if (isMultiplayer && isGameLocked && lockOwner !== currentPlayerId) {
-      console.log('[DRAG DEBUG] Multiplayer locked by other player');
       setStatusMessage('Other player is moving...');
       return;
     }
     
-    console.log('[DRAG DEBUG] Starting immediate drag preparation for tile:', index);
     
     // Set initial state with isPressed = true, ready for immediate drag
     setDragState({ 
@@ -399,7 +342,6 @@ export default function BoardDrag({
     dragStartPos.current = { clientX: e.clientX, clientY: e.clientY };
     originTileRef.current = { ...tiles[index] };
 
-    console.log('[DRAG DEBUG] Adding event listeners for immediate response');
     window.addEventListener('pointermove', handlePointerMove, { passive: false });
     window.addEventListener('pointerup', handlePointerUp, { passive: false });
   };
@@ -408,12 +350,7 @@ export default function BoardDrag({
   // ...
 
   const renderGhostTile = () => {
-    console.log('[DRAG DEBUG] Rendering ghost tile', { 
-      isDragging: dragState.isDragging, 
-      isSnapping: snapAnimation.isSnapping,
-      dragGhostPos: dragState.ghostPos,
-      snapGhostPos: snapAnimation.ghostPos
-    });
+
     
     let ghostStyle = {
       width: cellSize - tileMargin * 2,
@@ -429,18 +366,15 @@ export default function BoardDrag({
     };
 
     if (dragState.isDragging && dragState.isPressed) {
-      console.log('[DRAG DEBUG] Ghost tile in dragging mode');
       ghostStyle.opacity = 0.85;
       ghostStyle.transform = `translate(${dragState.ghostPos.x - cellSize / 2}px, ${dragState.ghostPos.y - cellSize / 2}px)`;
       ghostStyle.transition = 'none';
     } else if (snapAnimation.isSnapping) {
-      console.log('[DRAG DEBUG] Ghost tile in snapping mode');
       ghostStyle.opacity = 0.85;
       ghostStyle.transform = `translate(${snapAnimation.ghostPos.x - cellSize / 2}px, ${snapAnimation.ghostPos.y - cellSize / 2}px)`;
       ghostStyle.transition = 'transform 0.2s ease-out'; // The smooth animation!
     } else if (dragState.isDragging && !dragState.isPressed) {
       // Safety: if we're somehow still dragging but not pressed, hide the ghost
-      console.log('[DRAG DEBUG] WARNING: Dragging without pressed state - hiding ghost');
       ghostStyle.opacity = 0;
     }
 
@@ -448,7 +382,6 @@ export default function BoardDrag({
        <div 
         style={ghostStyle} 
         onTransitionEnd={() => {
-          console.log('[DRAG DEBUG] Ghost tile transition ended');
           if (snapAnimation.isSnapping && snapAnimation.finalMove) {
             onSnapAnimationEnd(snapAnimation.finalMove);
           }
