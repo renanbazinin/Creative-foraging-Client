@@ -1,12 +1,13 @@
-# React + Vite
+## Creative Foraging
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Two players silently reshape a connected cluster of 10 blocks into a recognizable silhouette. Each tries to guess what the other is forming. No chatting—only movement speaks. Save finished shapes to a local gallery.
 
-Currently, two official plugins are available:
+Play it here:
+https://renanbazinin.github.io/Creative-foraging-Client/
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Core rules:
+- Always exactly 10 blocks, all orthogonally connected.
+- Move one block at a time into an adjacent empty cell without breaking connectivity.
+- Players can pass or keep sculpting; finish when the object feels clear.
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Have fun exploring emergent shapes and shared imagination.
