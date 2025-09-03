@@ -1,0 +1,222 @@
+/* Board Component Styles - Clean Dark Mode for Two-Player Game */
+.board-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  padding: 2rem;
+  background-color: #000;
+  color: #0f0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  min-height: 100vh;
+}
+
+.grid {
+  border: 2px solid #0f0;
+  background-color: #000;
+}
+
+.player-status {
+  text-align: center;
+  padding: 1rem;
+  border: 2px solid #0f0;
+  border-radius: 8px;
+  background-color: #000;
+  color: #0f0;
+  min-width: 300px;
+}
+
+.player-status h2 {
+  margin-top: 0;
+  color: #0f0;
+}
+
+.player-status p {
+  margin: 0.5rem 0;
+  font-size: 1rem;
+}
+
+.status-bar {
+  margin-top: 1rem;
+  font-size: 1rem;
+  color: #0f0;
+  min-height: 1.5rem;
+  text-align: center;
+  max-width: 400px;
+}
+
+/* Button Styles */
+.board-controls {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.save-shape-button, 
+.end-turn-button, 
+.complete-shape-button {
+  background-color: #0f0;
+  color: #000;
+  padding: 0.5rem 1rem;
+  font-weight: bold;
+  border: 2px solid #0f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  margin: 0.25rem;
+}
+
+.end-turn-button {
+  background-color: #ff6600;
+  border-color: #ff6600;
+  color: #000;
+}
+
+.complete-shape-button {
+  background-color: #00ffff;
+  border-color: #00ffff;
+  color: #000;
+}
+
+.save-shape-button:hover:not(:disabled),
+.end-turn-button:hover:not(:disabled),
+.complete-shape-button:hover:not(:disabled) {
+  background-color: #000;
+}
+
+.save-shape-button:hover:not(:disabled) {
+  color: #0f0;
+}
+
+.end-turn-button:hover:not(:disabled) {
+  color: #ff6600;
+}
+
+.complete-shape-button:hover:not(:disabled) {
+  color: #00ffff;
+}
+
+.save-shape-button:disabled,
+.end-turn-button:disabled,
+.complete-shape-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Multiplayer specific styles */
+.player-status.multiplayer {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  border: none;
+  min-width: 400px;
+}
+
+.player-status.multiplayer h2 {
+  color: white;
+  margin: 0 0 10px 0;
+  font-size: 18px;
+}
+
+.multiplayer-status {
+  margin: 10px 0;
+}
+
+.lock-status {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+.lock-status.you-have-lock {
+  background: #4CAF50;
+  color: white;
+}
+
+.lock-status.other-has-lock {
+  background: #FF9800;
+  color: white;
+}
+
+.lock-status.available {
+  background: #E8F5E8;
+  color: #2E7D32;
+}
+
+.other-players {
+  margin: 15px 0;
+}
+
+.other-players h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  opacity: 0.9;
+  color: white;
+}
+
+.other-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 14px;
+}
+
+.player-name {
+  flex: 1;
+}
+
+.player-connection {
+  font-size: 12px;
+}
+
+.game-stats {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+.game-stats p {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  opacity: 0.9;
+  color: white;
+}
+
+.game-stats button {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+}
+
+.player-status button {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+}
+
+.player-status.multiplayer .complete-shape-button {
+  background: #FF6B35;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: background 0.2s;
+}
+
+.player-status.multiplayer .complete-shape-button:hover:not(:disabled) {
+  background: #E55A2B;
+}
+
+.player-status.multiplayer .complete-shape-button:disabled {
+  background: #999;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
