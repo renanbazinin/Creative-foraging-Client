@@ -1,4 +1,5 @@
 import { io } from 'socket.io-client';
+import { API_URL } from '../config';
 
 class SocketService {
   constructor() {
@@ -10,7 +11,7 @@ class SocketService {
     this.eventListeners = new Map();
   }
 
-  connect(serverUrl = 'http://localhost:3001') {
+  connect(serverUrl = API_URL.replace(/\/$/, '')) { // ensure no trailing slash
     if (this.socket) {
       this.disconnect();
     }
