@@ -101,6 +101,92 @@
   margin-bottom: 1rem;
 }
 
+/* Health panel inside Online card */
+.health-panel {
+  margin-top: 0.75rem;
+  background: #041a04;
+  border: 1px solid #0f0;
+  border-radius: 8px;
+  padding: 0.75rem 0.85rem 0.9rem;
+  font-size: 0.75rem;
+  text-align: left;
+  position: relative;
+}
+.health-panel:hover {
+  background: #062406;
+}
+.health-header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.35rem;
+}
+.health-title {
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #8aff8a;
+}
+.health-panel .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px currentColor;
+}
+.refresh-btn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid #155e15;
+  color: #8aff8a;
+  cursor: pointer;
+  font-size: 0.65rem;
+  line-height: 1;
+  padding: 2px 6px 3px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+.refresh-btn:hover {
+  background: #0f0;
+  color: #000;
+  border-color: #0f0;
+}
+.health-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem 0.75rem;
+}
+.health-stats .stat {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.68rem;
+  line-height: 1.15;
+}
+.health-stats .stat label {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.65;
+  margin-bottom: 2px;
+}
+.health-stats .stat span {
+  font-family: monospace;
+  font-size: 0.7rem;
+  color: #d2ffd2;
+}
+.health-error {
+  font-size: 0.65rem;
+  color: #ff6b6b;
+  font-family: monospace;
+}
+.health-stats .timestamp {
+  grid-column: 1 / -1;
+  justify-self: end;
+  font-size: 0.55rem;
+  opacity: 0.55;
+  margin-top: 0.3rem;
+}
+
 .mode-status {
   position: absolute;
   top: 1rem;
