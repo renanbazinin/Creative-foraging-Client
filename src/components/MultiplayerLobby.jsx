@@ -5,6 +5,8 @@ import './MultiplayerLobby.css';
 export default function MultiplayerLobby({ onGameStart, onBackToMenu }) {
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [playerName, setPlayerName] = useState('');
+  // Random default name fetched once
+  const [isLoadingNames, setIsLoadingNames] = useState(false);
   const [roomId, setRoomId] = useState('');
   const [availableRooms, setAvailableRooms] = useState([]);
   const [currentRoom, setCurrentRoom] = useState(null);
@@ -16,6 +18,29 @@ export default function MultiplayerLobby({ onGameStart, onBackToMenu }) {
   const [roomStatusMessage, setRoomStatusMessage] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [autoRefreshInterval, setAutoRefreshInterval] = useState(null);
+
+  // Fetch usernames once and set a single random default
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        setIsLoadingNames(true);
+        const res = await fetch('https://raw.githubusercontent.com/renanbazinin/justRepoForRawThings/refs/heads/main/fakeUsernames.json');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        if (active && Array.isArray(data.usernames) && data.usernames.length) {
+          const random = data.usernames[Math.floor(Math.random() * data.usernames.length)];
+          // Only set if user hasn't typed anything
+            setPlayerName(p => p ? p : random);
+        }
+      } catch (err) {
+        console.warn('[Client Lobby] Failed to fetch usernames:', err.message);
+      } finally {
+        setIsLoadingNames(false);
+      }
+    })();
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     // Connect to server
@@ -466,6 +491,7 @@ export default function MultiplayerLobby({ onGameStart, onBackToMenu }) {
             maxLength={20}
             disabled={isLoading}
           />
+          {isLoadingNames && <div style={{ fontSize: '0.6rem', opacity: 0.5 }}>Loading name...</div>}
         </div>
 
         <div className="room-actions">
