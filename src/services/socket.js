@@ -183,6 +183,15 @@ class SocketService {
       this.emit('shape-saved', data);
     });
 
+    // Live opponent drag feedback
+    this.socket.on('opponent-drag', (data) => {
+      // data: { playerId, tileIndex, pointer:{x,y} }
+      this.emit('opponent-drag', data);
+    });
+    this.socket.on('opponent-drag-end', (data) => {
+      this.emit('opponent-drag-end', data);
+    });
+
     // Error handling
     this.socket.on('error', (data) => {
       console.error('Socket error:', data);
@@ -392,6 +401,24 @@ class SocketService {
     }
     this.socket.emit('release-move', {
       roomId: this.currentRoom
+    });
+  }
+
+  // Drag streaming (cosmetic). pointerCoords should be normalized (0..1) within board.
+  sendDragUpdate(tileIndex, pointerCoords) {
+    if (!this.socket || !this.connected || !this.currentRoom) return;
+    this.socket.emit('drag-update', {
+      roomId: this.currentRoom,
+      tileIndex,
+      pointer: pointerCoords
+    });
+  }
+  sendDragEnd(tileIndex, pointerCoords) {
+    if (!this.socket || !this.connected || !this.currentRoom) return;
+    this.socket.emit('drag-end', {
+      roomId: this.currentRoom,
+      tileIndex,
+      pointer: pointerCoords
     });
   }
 

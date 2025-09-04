@@ -504,14 +504,14 @@ export default function MultiplayerLobby({ onGameStart, onBackToMenu }) {
           <div className="available-rooms-section">
             <div className="available-rooms-header">
               <h3>Available Rooms</h3>
-              <button 
+             {/* <button 
                 className="refresh-rooms-button"
                 onClick={handleRefreshRooms}
                 disabled={isRefreshing || connectionStatus !== 'connected' || isLoading}
                 title="Refresh available rooms"
               >
-                {isRefreshing ? '⟳' : ''}
-              </button>
+                {isRefreshing ? '⟳' : '↻'}
+              </button>*/}
             </div>
             <div className="rooms-status">
               {autoRefreshInterval && (

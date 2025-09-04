@@ -3,7 +3,7 @@ import { API_URL } from '../config';
 import './MainMenu.css';
 
 export default function MainMenu({ onSelectGameMode, showGallery, galleryCount }) {
-  const [health, setHealth] = useState({ status: 'LOADING', activeRooms: null, connectedPlayers: null, timestamp: null });
+  const [health, setHealth] = useState({ status: 'LOADING', activeRooms: null, connectedPlayers: null, timestamp: null, version: null });
   const [healthError, setHealthError] = useState(null);
   const [lastFetch, setLastFetch] = useState(null);
 
@@ -20,7 +20,8 @@ export default function MainMenu({ onSelectGameMode, showGallery, galleryCount }
             status: data.status || 'UNKNOWN',
             activeRooms: data.activeRooms ?? 0,
             connectedPlayers: data.connectedPlayers ?? 0,
-            timestamp: data.timestamp || new Date().toISOString()
+            timestamp: data.timestamp || new Date().toISOString(),
+            version: data.version || null,
           });
           setHealthError(null);
           setLastFetch(Date.now());
@@ -72,7 +73,7 @@ export default function MainMenu({ onSelectGameMode, showGallery, galleryCount }
             <div className="health-header">
               <span className="dot" style={{ backgroundColor: statusColor(health.status) }} />
               <span className="health-title">Server Health</span>
-              <button className="refresh-btn" title="Refresh" onClick={(e) => { e.preventDefault(); e.stopPropagation(); const HEALTH_URL = `${API_URL}/health`; setLastFetch(null); setHealth(h => ({ ...h, status: 'LOADING' })); fetch(HEALTH_URL).then(r => r.json()).then(d => setHealth({ status: d.status, activeRooms: d.activeRooms, connectedPlayers: d.connectedPlayers, timestamp: d.timestamp })).catch(err => { setHealthError(err.message); setHealth(h => ({ ...h, status: 'ERROR' })); }); }}>
+              <button className="refresh-btn" title="Refresh" onClick={(e) => { e.preventDefault(); e.stopPropagation(); const HEALTH_URL = `${API_URL}/health`; setLastFetch(null); setHealth(h => ({ ...h, status: 'LOADING' })); fetch(HEALTH_URL).then(r => r.json()).then(d => setHealth({ status: d.status || 'UNKNOWN', activeRooms: d.activeRooms ?? 0, connectedPlayers: d.connectedPlayers ?? 0, timestamp: d.timestamp || new Date().toISOString(), version: d.version || null })).catch(err => { setHealthError(err.message); setHealth(h => ({ ...h, status: 'ERROR' })); }); }}>
                 ↻
               </button>
             </div>
@@ -83,7 +84,10 @@ export default function MainMenu({ onSelectGameMode, showGallery, galleryCount }
                 <div className="stat"><label>Status:</label><span style={{ color: statusColor(health.status) }}>{health.status}</span></div>
                 <div className="stat"><label>Active Rooms:</label><span>{health.activeRooms ?? '—'}</span></div>
                 <div className="stat"><label>Players Online:</label><span>{health.connectedPlayers ?? '—'}</span></div>
-                <div className="timestamp">{health.timestamp && new Date(health.timestamp).toLocaleTimeString()}</div>
+                <div className="timestamp" style={{ fontSize: '11px', opacity: 0.7 }}>{health.timestamp && new Date(health.timestamp).toLocaleTimeString()}</div>
+                {health.version && (
+                  <div className="version-tag" style={{ fontSize: '10px', opacity: 0.55, textAlign: 'right', marginTop: '2px', letterSpacing: '0.5px' }}>v{health.version}</div>
+                )}
               </div>
             )}
           </div>

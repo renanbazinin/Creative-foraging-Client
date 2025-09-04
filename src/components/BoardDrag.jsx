@@ -41,10 +41,32 @@ export default function BoardDrag({
     isPressed: false, // Track if pointer is down
   });
 
+  // Opponent drag preview state
+  const [opponentDrag, setOpponentDrag] = useState({
+    active: false,
+    tileIndex: null,
+    ghostPos: { x: 0, y: 0 }, // pixel center of lifted tile
+    lastUpdate: 0,
+    phase: 'idle', // idle | dragging | released | animatingToCell
+    handVisible: false
+  });
+  const opponentFinishTimeoutRef = useRef(null);
+  const previousTilesRef = useRef(tiles);
+  const releasedTileRef = useRef(null); // Track which tile was just released
+
+  useEffect(() => { previousTilesRef.current = tiles; }, [tiles]);
+
   // **NEW: State to manage the final "snap" animation**
   const [snapAnimation, setSnapAnimation] = useState({
     isSnapping: false,
     ghostPos: { x: 0, y: 0 }
+  });
+
+  // Opponent snap animation state - same system as main player
+  const [opponentSnapAnimation, setOpponentSnapAnimation] = useState({
+    isSnapping: false,
+    ghostPos: { x: 0, y: 0 },
+    tileIndex: null
   });
 
   const boardRef = useRef(null);
@@ -110,10 +132,37 @@ export default function BoardDrag({
 
     const handleGameStateUpdate = (data) => {
       if (data.tiles) {
+        const prevTiles = previousTilesRef.current;
         setTiles(data.tiles);
         setMoveCount(data.moveCount || 0);
         setStatusMessage('Game state updated');
         setTimeout(() => setStatusMessage(''), 1500);
+        
+        // Opponent drop animation trigger: if we saw release, start snap animation like main player
+        if (releasedTileRef.current != null) {
+          const idx = releasedTileRef.current;
+          if (prevTiles[idx] && data.tiles[idx]) {
+            const prevPos = prevTiles[idx];
+            const newPos = data.tiles[idx];
+            if (prevPos.x !== newPos.x || prevPos.y !== newPos.y) {
+              // Calculate final pixel position for snap animation
+              const finalPixelPos = {
+                x: newPos.x * cellSize + cellSize / 2,
+                y: (gridSize - 1 - newPos.y) * cellSize + cellSize / 2
+              };
+              
+              // Clear released tile ref
+              releasedTileRef.current = null;
+              
+              // Start opponent snap animation using same system as main player
+              setOpponentSnapAnimation({
+                isSnapping: true,
+                ghostPos: finalPixelPos,
+                tileIndex: idx
+              });
+            }
+          }
+        }
       }
     };
 
@@ -126,17 +175,79 @@ export default function BoardDrag({
       }
     };
 
+    // Live opponent drag handlers
+    const handleOpponentDrag = (data) => {
+      if (!boardRef.current) return;
+      if (data.playerId === socketService.getCurrentPlayerId()) return;
+      console.log('[DEBUG] Opponent drag start:', data);
+      // Convert normalized back to pixels
+      const rect = boardRef.current.getBoundingClientRect();
+      const px = data.pointer.x * rect.width;
+      const py = data.pointer.y * rect.height;
+      const newState = {
+        active: true,
+        tileIndex: data.tileIndex,
+        ghostPos: { x: px, y: py },
+        lastUpdate: Date.now(),
+        phase: 'dragging',
+        handVisible: true,
+        targetCenter: null
+      };
+      console.log('[DEBUG] Setting opponent drag state:', newState);
+      setOpponentDrag(newState);
+    };
+    const handleOpponentDragEnd = (data) => {
+      if (data.playerId === socketService.getCurrentPlayerId()) return;
+      console.log('[DEBUG] Opponent drag end received:', data);
+      console.log('[DEBUG] Current opponent drag state before end:', opponentDrag);
+      
+      // Store released tile index for game-state-update detection
+      releasedTileRef.current = opponentDrag.tileIndex;
+      
+      // Immediately hide hand and active state
+      setOpponentDrag({
+        active: false,
+        tileIndex: null,
+        ghostPos: { x: 0, y: 0 },
+        lastUpdate: 0,
+        phase: 'idle',
+        handVisible: false
+      });
+      
+      if (opponentFinishTimeoutRef.current) clearTimeout(opponentFinishTimeoutRef.current);
+      // Fallback cleanup
+      opponentFinishTimeoutRef.current = setTimeout(() => {
+        console.log('[DEBUG] Fallback cleanup triggered');
+        releasedTileRef.current = null;
+      }, 700);
+    };
+
+    const handleLockReleased = (data) => {
+      // Whenever lock releases and it's not us, ensure opponent visuals cleared
+      if (data && data.playerId !== socketService.getCurrentPlayerId()) {
+        releasedTileRef.current = null;
+        setOpponentDrag({ active: false, tileIndex: null, ghostPos: { x:0,y:0 }, lastUpdate:0, phase:'idle', handVisible:false });
+        setOpponentSnapAnimation({ isSnapping: false, ghostPos: { x:0,y:0 }, tileIndex: null });
+      }
+    };
+
     // ... other socket handlers
     socketService.on('move-lock-granted', handleMoveLockGranted);
     socketService.on('move-lock-denied', handleMoveLockDenied);
     socketService.on('game-state-update', handleGameStateUpdate);
     socketService.on('move-accepted', handleMoveAccepted);
+    socketService.on('opponent-drag', handleOpponentDrag);
+    socketService.on('opponent-drag-end', handleOpponentDragEnd);
+    socketService.on('lock-released', handleLockReleased);
     // ...
     return () => {
       socketService.off('move-lock-granted', handleMoveLockGranted);
       socketService.off('move-lock-denied', handleMoveLockDenied);
       socketService.off('game-state-update', handleGameStateUpdate);
       socketService.off('move-accepted', handleMoveAccepted);
+      socketService.off('opponent-drag', handleOpponentDrag);
+      socketService.off('opponent-drag-end', handleOpponentDragEnd);
+      socketService.off('lock-released', handleLockReleased);
       // ...
     };
   }, [isMultiplayer, multiplayerData, dragState.index, dragState.isDragging, currentPlayerId]);
@@ -174,6 +285,11 @@ export default function BoardDrag({
       setAllowed([]);
   };
 
+  // Opponent snap animation end handler
+  const onOpponentSnapAnimationEnd = () => {
+    setOpponentSnapAnimation({ isSnapping: false, ghostPos: { x: 0, y: 0 }, tileIndex: null });
+  };
+
   const handlePointerUp = (e) => {
     const currentDragState = dragStateRef.current;
     const currentAllowed = allowedRef.current;
@@ -189,6 +305,10 @@ export default function BoardDrag({
     if (!currentDragState.isDragging) {
       setDragState({ index: null, isDragging: false, ghostPos: { x: 0, y: 0 }, isPressed: false });
       setAllowed([]);
+      // End streaming if we had started
+      if (isMultiplayer && currentDragState.index != null) {
+        emitDragEnd(currentDragState.index);
+      }
       return;
     }
 
@@ -196,6 +316,9 @@ export default function BoardDrag({
       setStatusMessage('No valid moves available');
       setDragState({ index: null, isDragging: false, ghostPos: { x: 0, y: 0 }, isPressed: false });
       setAllowed([]);
+      if (isMultiplayer && currentDragState.index != null) {
+        emitDragEnd(currentDragState.index);
+      }
       return;
     }
 
@@ -232,6 +355,9 @@ export default function BoardDrag({
     } else {
        setDragState({ index: null, isDragging: false, ghostPos: { x: 0, y: 0 }, isPressed: false });
        setAllowed([]);
+       if (isMultiplayer && currentDragState.index != null) {
+         emitDragEnd(currentDragState.index);
+       }
     }
   };
 
@@ -298,6 +424,19 @@ export default function BoardDrag({
         ghostPos: newGhostPos,
         isDragging: distance > MIN_DRAG_DISTANCE ? true : prev.isDragging
       }));
+
+      // Stream normalized coordinates to opponent (throttle via rAF style: simple time check)
+      if (isMultiplayer && dragStateRef.current.isDragging) {
+        const now = Date.now();
+        if (!handlePointerMove.lastSent || now - handlePointerMove.lastSent > 50) { // 20fps cap
+          const norm = {
+            x: newGhostPos.x / rect.width,
+            y: newGhostPos.y / rect.height
+          };
+            socketService.sendDragUpdate(dragStateRef.current.index, norm);
+            handlePointerMove.lastSent = now;
+        }
+      }
     }
   };
 
@@ -345,9 +484,45 @@ export default function BoardDrag({
     window.addEventListener('pointermove', handlePointerMove, { passive: false });
     window.addEventListener('pointerup', handlePointerUp, { passive: false });
   };
+
+  // Emit end drag update (cosmetic)
+  const emitDragEnd = (tileIndex) => {
+    if (!boardRef.current) return;
+    const rect = boardRef.current.getBoundingClientRect();
+    const gs = dragStateRef.current.ghostPos;
+    const norm = { x: gs.x / rect.width, y: gs.y / rect.height };
+    socketService.sendDragEnd(tileIndex, norm);
+  };
   
   // Omitted for brevity: renderPlayerStatus, handleCompleteShape, etc. they remain the same.
   // ...
+
+  // Save current shape to gallery (available while playing)
+  const handleSaveCurrentShape = () => {
+    // Build 10x10 grid from current tiles state
+    const grid = Array.from({ length: gridSize }, () => Array(gridSize).fill(0));
+    tiles.forEach(({ x, y }) => {
+      if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
+        // In other components y is flipped for display; gallery expects logical orientation
+        grid[gridSize - 1 - y][x] = 1;
+      }
+    });
+
+    const shapeData = {
+      grid,
+      timestamp: new Date().toISOString(),
+      moves: moveCount,
+      players: isMultiplayer
+        ? { player1Name: 'You', player2Name: 'Opponent' }
+        : { player1Name: 'Player 1', player2Name: 'Player 2' },
+      gameMode: isMultiplayer ? 'multiplayer' : 'offline'
+    };
+    if (typeof onSave === 'function') {
+      onSave(shapeData);
+      setStatusMessage('Shape saved to gallery');
+      setTimeout(() => setStatusMessage(''), 2500);
+    }
+  };
 
   const renderGhostTile = () => {
 
@@ -370,7 +545,7 @@ export default function BoardDrag({
       ghostStyle.transform = `translate(${dragState.ghostPos.x - cellSize / 2}px, ${dragState.ghostPos.y - cellSize / 2}px)`;
       ghostStyle.transition = 'none';
     } else if (snapAnimation.isSnapping) {
-      ghostStyle.opacity = 0.85;
+      ghostStyle.opacity = 1.0; // Full opacity for snap animation
       ghostStyle.transform = `translate(${snapAnimation.ghostPos.x - cellSize / 2}px, ${snapAnimation.ghostPos.y - cellSize / 2}px)`;
       ghostStyle.transition = 'transform 0.2s ease-out'; // The smooth animation!
     } else if (dragState.isDragging && !dragState.isPressed) {
@@ -390,6 +565,95 @@ export default function BoardDrag({
     );
   };
 
+  // Render opponent snap animation ghost (same style as main player)
+  const renderOpponentSnapGhost = () => {
+    if (!opponentSnapAnimation.isSnapping) return null;
+
+    const ghostStyle = {
+      width: cellSize - tileMargin * 2,
+      height: cellSize - tileMargin * 2,
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      background: '#0f0',
+      borderRadius: 4,
+      zIndex: 1000,
+      pointerEvents: 'none',
+      opacity: 1.0, // Full opacity for snap animation
+      transform: `translate(${opponentSnapAnimation.ghostPos.x - cellSize / 2}px, ${opponentSnapAnimation.ghostPos.y - cellSize / 2}px)`,
+      transition: 'transform 0.2s ease-out'
+    };
+
+    return (
+      <div 
+        style={ghostStyle} 
+        onTransitionEnd={onOpponentSnapAnimationEnd}
+      />
+    );
+  };
+
+  // Opponent ghost (purple outline) only when active
+  const renderOpponentGhost = () => {
+    console.log('[DEBUG] renderOpponentGhost called - isMultiplayer:', isMultiplayer, 'opponentDrag.active:', opponentDrag.active, 'handVisible:', opponentDrag.handVisible);
+    if (!isMultiplayer || !opponentDrag.active) return null;
+
+    const baseSize = cellSize - tileMargin * 2;
+    const left = opponentDrag.ghostPos.x - cellSize / 2;
+    const top = opponentDrag.ghostPos.y - cellSize / 2;
+
+    const isAnimating = opponentDrag.phase === 'animatingToCell';
+    const style = {
+      width: baseSize,
+      height: baseSize,
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      transform: `translate(${left}px, ${top}px)`,
+      transition: isAnimating ? 'transform 200ms ease-out' : 'transform 40ms linear',
+      background: 'rgba(0,255,0,0.35)',
+      border: '2px solid #0f0',
+      borderRadius: 4,
+      pointerEvents: 'none',
+      zIndex: 950,
+      boxShadow: opponentDrag.phase === 'dragging' ? '0 0 10px rgba(0,255,120,0.7)' : '0 0 5px rgba(0,255,120,0.4)',
+      backdropFilter: 'blur(1px)'
+    };
+
+    console.log('[DEBUG] Hand should be visible:', opponentDrag.handVisible);
+    const hand = opponentDrag.handVisible ? (
+      <img
+        src="public/hand.png"
+        alt="hand"
+        style={{
+          position: 'absolute',
+          left: left + baseSize * 0.1,
+            top: top - baseSize * 0.4,
+          width: baseSize * 1.5,
+          height: 'auto',
+          transform: 'rotate(8deg)',
+          zIndex: 960,
+          pointerEvents: 'none',
+          filter: 'drop-shadow(0 0 6px rgba(0,255,120,0.5))'
+        }}
+      />
+    ) : null;
+
+    return (
+      <>
+        {hand}
+        <div
+          style={style}
+          onTransitionEnd={() => {
+            if (opponentDrag.phase === 'animatingToCell') {
+              // Animation finished; remove overlay
+              setOpponentDrag({ active: false, tileIndex: null, ghostPos: { x:0,y:0 }, lastUpdate:0, phase:'idle', handVisible:false });
+            }
+          }}
+        />
+      </>
+    );
+  };
+
   return (
     <div className="board-container">
       {/* renderPlayerStatus() */}
@@ -406,8 +670,9 @@ export default function BoardDrag({
       }} onPointerDown={handlePointerDown}>
         {tiles.map((tile, tileIdx) => {
           let opacity = 1;
-          // Hide the original tile while it's being dragged or animating.
-          if ((dragState.isDragging || snapAnimation.isSnapping) && dragState.index === tileIdx) {
+          if (((dragState.isDragging || snapAnimation.isSnapping) && dragState.index === tileIdx) ||
+              (opponentDrag.active && opponentDrag.tileIndex === tileIdx) ||
+              (opponentSnapAnimation.isSnapping && opponentSnapAnimation.tileIndex === tileIdx)) {
             opacity = 0.2;
           }
           return (
@@ -420,8 +685,7 @@ export default function BoardDrag({
                 background: '#0f0',
                 borderRadius: 4,
                 opacity: opacity,
-                transition: 'opacity 0.2s',
-                // Prevent browser drag behavior
+                transition: 'left 0.18s ease-out, top 0.18s ease-out, opacity 0.15s',
                 userSelect: 'none',
                 WebkitUserDrag: 'none',
                 pointerEvents: 'auto',
@@ -437,9 +701,21 @@ export default function BoardDrag({
         ))}
         {/* **NEW: Render the ghost tile, which handles dragging AND snapping.** */}
         {renderGhostTile()}
+        {renderOpponentSnapGhost()}
+        {renderOpponentGhost()}
       </div>
       <div className="status-bar">
         {statusMessage ? <p>{statusMessage}</p> : <p>{dragState.isDragging ? 'Release to drop' : 'Hold a block to move it'}</p>}
+        {gameState === 'playing' && (
+          <button
+            className="save-shape-button"
+            style={{ marginTop: '8px' }}
+            onClick={handleSaveCurrentShape}
+            disabled={moveCount === 0}
+          >
+            Save Shape to Gallery
+          </button>
+        )}
       </div>
     </div>
   );
