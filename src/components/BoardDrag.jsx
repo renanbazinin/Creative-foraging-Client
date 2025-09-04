@@ -622,7 +622,7 @@ export default function BoardDrag({
     console.log('[DEBUG] Hand should be visible:', opponentDrag.handVisible);
     const hand = opponentDrag.handVisible ? (
       <img
-        src="public/hand.png"
+        src="https://i.imgur.com/jf4ESYt.png"
         alt="hand"
         style={{
           position: 'absolute',
