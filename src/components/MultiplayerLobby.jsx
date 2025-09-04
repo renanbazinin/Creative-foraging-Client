@@ -14,6 +14,8 @@ export default function MultiplayerLobby({ onGameStart, onBackToMenu }) {
   const [statusMessage, setStatusMessage] = useState('');
   const [canStartGame, setCanStartGame] = useState(false);
   const [roomStatusMessage, setRoomStatusMessage] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(null);
 
   useEffect(() => {
     // Connect to server
@@ -94,6 +96,12 @@ export default function MultiplayerLobby({ onGameStart, onBackToMenu }) {
     const handleAvailableRooms = (data) => {
       console.log('[Client Lobby] Available rooms:', data);
       setAvailableRooms(data.rooms);
+      setIsRefreshing(false);
+    };
+
+    const handleRoomListUpdated = (data) => {
+      console.log('[Client Lobby] Room list updated:', data);
+      setAvailableRooms(data.rooms);
     };
 
     const handleSocketError = (data) => {
@@ -162,6 +170,7 @@ export default function MultiplayerLobby({ onGameStart, onBackToMenu }) {
     socketService.on('player-left', handlePlayerLeft);
     socketService.on('room-left', handleRoomLeft);
     socketService.on('available-rooms', handleAvailableRooms);
+    socketService.on('room-list-updated', handleRoomListUpdated);
     socketService.on('socket-error', handleSocketError);
     socketService.on('game-state-update', handleGameStateUpdate);
     socketService.on('game-started', handleGameStarted);
@@ -169,6 +178,11 @@ export default function MultiplayerLobby({ onGameStart, onBackToMenu }) {
 
     // Cleanup function
     return () => {
+      // Clear auto refresh interval
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+      }
+      
       socketService.off('connection-status', handleConnectionStatus);
       socketService.off('connection-error', handleConnectionError);
       socketService.off('room-created', handleRoomCreated);
@@ -177,6 +191,7 @@ export default function MultiplayerLobby({ onGameStart, onBackToMenu }) {
       socketService.off('player-left', handlePlayerLeft);
       socketService.off('room-left', handleRoomLeft);
       socketService.off('available-rooms', handleAvailableRooms);
+      socketService.off('room-list-updated', handleRoomListUpdated);
       socketService.off('socket-error', handleSocketError);
       socketService.off('game-state-update', handleGameStateUpdate);
       socketService.off('game-started', handleGameStarted);
@@ -191,6 +206,33 @@ export default function MultiplayerLobby({ onGameStart, onBackToMenu }) {
         socketService.getAvailableRooms();
       } catch (err) {
         console.error('Failed to fetch rooms:', err);
+      }
+    }
+  }, [connectionStatus, currentRoom]);
+
+  // Auto-refresh available rooms when not in a room
+  useEffect(() => {
+    if (connectionStatus === 'connected' && !currentRoom) {
+      // Set up auto-refresh interval (every 5 seconds)
+      const interval = setInterval(() => {
+        try {
+          socketService.getAvailableRooms();
+        } catch (err) {
+          console.error('Failed to auto-refresh rooms:', err);
+        }
+      }, 5000);
+      
+      setAutoRefreshInterval(interval);
+      
+      return () => {
+        clearInterval(interval);
+        setAutoRefreshInterval(null);
+      };
+    } else {
+      // Clear auto-refresh when in a room or disconnected
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        setAutoRefreshInterval(null);
       }
     }
   }, [connectionStatus, currentRoom]);
@@ -298,6 +340,22 @@ export default function MultiplayerLobby({ onGameStart, onBackToMenu }) {
     } else {
       console.log('[Client Lobby] Cannot start game - conditions not met');
       setError('Need 2 players to start the game');
+    }
+  };
+
+  const handleRefreshRooms = async () => {
+    if (connectionStatus !== 'connected' || currentRoom) {
+      return;
+    }
+    
+    setIsRefreshing(true);
+    setError('');
+    
+    try {
+      socketService.getAvailableRooms();
+    } catch (err) {
+      setError('Failed to refresh rooms');
+      setIsRefreshing(false);
     }
   };
 
@@ -444,7 +502,27 @@ export default function MultiplayerLobby({ onGameStart, onBackToMenu }) {
           </div>
 
           <div className="available-rooms-section">
-            <h3>Available Rooms</h3>
+            <div className="available-rooms-header">
+              <h3>Available Rooms</h3>
+              <button 
+                className="refresh-rooms-button"
+                onClick={handleRefreshRooms}
+                disabled={isRefreshing || connectionStatus !== 'connected' || isLoading}
+                title="Refresh available rooms"
+              >
+                {isRefreshing ? '⟳' : ''}
+              </button>
+            </div>
+            <div className="rooms-status">
+              {autoRefreshInterval && (
+                <p className="auto-refresh-indicator">
+                  🟢
+                </p>
+              )}
+              {isRefreshing && (
+                <p className="refresh-status">Refreshing...</p>
+              )}
+            </div>
             {availableRooms.length === 0 ? (
               <p className="no-rooms">No rooms available</p>
             ) : (

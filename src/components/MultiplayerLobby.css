@@ -276,6 +276,73 @@
   border: 2px solid #0f0;
 }
 
+.available-rooms-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.available-rooms-header h3 {
+  margin: 0;
+  color: #0f0;
+  font-size: 1.2rem;
+  font-weight: 500;
+  text-shadow: 0 0 5px #0f0;
+}
+
+.refresh-rooms-button {
+  background-color: #0f0;
+  color: #000;
+  padding: 0.5rem;
+  font-weight: bold;
+  font-size: 1.2rem;
+  border: 2px solid #0f0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.refresh-rooms-button:hover:not(:disabled) {
+  background-color: #000;
+  color: #0f0;
+  text-shadow: 0 0 5px #0f0;
+}
+
+.refresh-rooms-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.rooms-status {
+  margin-bottom: 1rem;
+  min-height: 20px;
+}
+
+.auto-refresh-indicator {
+  color: #0f0;
+  font-size: 0.85rem;
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  background-color: #111;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  display: inline-block;
+}
+
+.refresh-status {
+  color: #0f0;
+  font-size: 0.85rem;
+  margin: 0;
+  font-style: italic;
+  opacity: 0.8;
+}
+
 .join-by-id-section {
   grid-column: 3;
   background-color: #000;
@@ -293,6 +360,11 @@
   font-size: 1.2rem;
   font-weight: 500;
   text-shadow: 0 0 5px #0f0;
+}
+
+/* Override for available-rooms-header h3 to not have bottom margin */
+.available-rooms-header h3 {
+  margin: 0;
 }
 
 .join-by-id {
@@ -643,6 +715,18 @@ button:disabled {
     padding: 1rem;
   }
   
+  .available-rooms-header {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  
+  .refresh-rooms-button {
+    width: 35px;
+    height: 35px;
+    font-size: 1rem;
+  }
+  
   .room-view {
     padding: 1.5rem;
     max-width: 100%;
@@ -702,6 +786,21 @@ button:disabled {
   .join-room-section,
   .join-by-id-section {
     padding: 0.75rem;
+  }
+  
+  .available-rooms-header {
+    gap: 0.25rem;
+  }
+  
+  .refresh-rooms-button {
+    width: 30px;
+    height: 30px;
+    font-size: 0.9rem;
+  }
+  
+  .auto-refresh-indicator,
+  .refresh-status {
+    font-size: 0.75rem;
   }
   
   .btn,

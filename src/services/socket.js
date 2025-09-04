@@ -96,6 +96,11 @@ class SocketService {
       this.emit('available-rooms', data);
     });
 
+    this.socket.on('room-list-updated', (data) => {
+      console.log('[Client Socket] Room list updated:', data);
+      this.emit('room-list-updated', data);
+    });
+
     this.socket.on('room-status-update', (data) => {
       console.log('[Client Socket] Room status update:', data);
       this.emit('room-status-update', data);
