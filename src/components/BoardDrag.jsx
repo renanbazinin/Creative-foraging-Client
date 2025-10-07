@@ -75,6 +75,8 @@ export default function BoardDrag({
   // **NEW: Refs to track current state for event handlers**
   const dragStateRef = useRef(dragState);
   const allowedRef = useRef(allowed);
+  // Track optimistic moves to prevent server overwrites
+  const optimisticMoveRef = useRef(null);
 
   // Cleanup effect to prevent memory leaks and stuck event listeners
   useEffect(() => {
@@ -95,6 +97,7 @@ export default function BoardDrag({
       setAllowed([]);
       setIsGameLocked(false);
       setLockOwner(null);
+      optimisticMoveRef.current = null; // Clear any pending optimistic moves
     }
   }, [gameState, initialTiles]);
 
@@ -133,6 +136,23 @@ export default function BoardDrag({
     const handleGameStateUpdate = (data) => {
       if (data.tiles) {
         const prevTiles = previousTilesRef.current;
+        
+        // Check if this update matches our optimistic move
+        if (optimisticMoveRef.current) {
+          const opt = optimisticMoveRef.current;
+          const serverPos = data.tiles[opt.tileIndex];
+          
+          // If server confirms our optimistic move, just clear the ref
+          if (serverPos && serverPos.x === opt.newPos.x && serverPos.y === opt.newPos.y) {
+            optimisticMoveRef.current = null;
+            setMoveCount(data.moveCount || 0);
+            return; // Don't update tiles - we already have it
+          } else {
+            // Server rejected or has different state - clear and apply server state
+            optimisticMoveRef.current = null;
+          }
+        }
+        
         setTiles(data.tiles);
         setMoveCount(data.moveCount || 0);
         setStatusMessage('Game state updated');
@@ -168,6 +188,22 @@ export default function BoardDrag({
 
     const handleMoveAccepted = (data) => {
       if (data.tiles) {
+        // Check if this matches our optimistic move
+        if (optimisticMoveRef.current) {
+          const opt = optimisticMoveRef.current;
+          const serverPos = data.tiles[opt.tileIndex];
+          
+          // Server confirmed our move - just clear the ref and update move count
+          if (serverPos && serverPos.x === opt.newPos.x && serverPos.y === opt.newPos.y) {
+            optimisticMoveRef.current = null;
+            setMoveCount(data.moveCount || 0);
+            return; // Don't update tiles - we already applied optimistically
+          } else {
+            // Server has different state - clear and apply
+            optimisticMoveRef.current = null;
+          }
+        }
+        
         setTiles(data.tiles);
         setMoveCount(data.moveCount || 0);
         setStatusMessage('Move accepted');
@@ -258,31 +294,49 @@ export default function BoardDrag({
   // **NEW: Function to handle the end of the snap animation**
   const onSnapAnimationEnd = (finalMove) => {
       
-      // This is where the actual state update happens.
-      if (isMultiplayer) {
-          if (isGameLocked && lockOwner === currentPlayerId) {
-              try {
-                  socketService.makeLockedMove(dragState.index, { x: finalMove.x, y: finalMove.y });
-                  setStatusMessage('Submitting move...');
-              } catch (err) {
-                  setStatusMessage('Error: ' + err.message);
-              }
-          } else {
-              setStatusMessage('Lost lock.');
-          }
-      } else {
-          const newTiles = tiles.map((t, i) => i === dragState.index ? { x: finalMove.x, y: finalMove.y } : t);
-          setTiles(newTiles);
-          setMoveCount(c => c + 1);
-          setHistory(h => [...h, newTiles]);
-          setStatusMessage(`Moved to (${finalMove.x},${finalMove.y})`);
-          setTimeout(() => setStatusMessage(''), 1500);
-      }
+      // OPTIMISTIC UPDATE: Apply move immediately to local state
+      const newTiles = tiles.map((t, i) => i === dragState.index ? { x: finalMove.x, y: finalMove.y } : t);
+      setTiles(newTiles);
+      setMoveCount(c => c + 1);
+      setHistory(h => [...h, newTiles]);
       
-      // Clean up all temporary states.
+      // Clean up snap animation immediately
       setSnapAnimation({ isSnapping: false, ghostPos: { x: 0, y: 0 } });
       setDragState({ index: null, isDragging: false, ghostPos: { x: 0, y: 0 }, isPressed: false });
       setAllowed([]);
+      
+      // Submit to server in background (multiplayer only)
+      if (isMultiplayer) {
+          if (isGameLocked && lockOwner === currentPlayerId) {
+              // Mark this as optimistic move to prevent server overwrite
+              optimisticMoveRef.current = {
+                tileIndex: dragState.index,
+                newPos: { x: finalMove.x, y: finalMove.y },
+                timestamp: Date.now()
+              };
+              
+              try {
+                  socketService.makeLockedMove(dragState.index, { x: finalMove.x, y: finalMove.y });
+                  setStatusMessage(`Moved to (${finalMove.x},${finalMove.y})`);
+                  setTimeout(() => setStatusMessage(''), 1500);
+              } catch (err) {
+                  // Revert on error
+                  optimisticMoveRef.current = null;
+                  setStatusMessage('Move failed: ' + err.message);
+                  const revertTiles = tiles.map((t, i) => i === dragState.index ? tiles[dragState.index] : t);
+                  setTiles(revertTiles);
+                  setMoveCount(c => c - 1);
+              }
+          } else {
+              setStatusMessage('Lost lock.');
+              // Revert if no lock
+              setTiles(tiles);
+              setMoveCount(c => c - 1);
+          }
+      } else {
+          setStatusMessage(`Moved to (${finalMove.x},${finalMove.y})`);
+          setTimeout(() => setStatusMessage(''), 1500);
+      }
   };
 
   // Opponent snap animation end handler
