@@ -27,26 +27,26 @@ function App() {
   const [finalGrid, setFinalGrid] = useState(null);
   const [totalMoves, setTotalMoves] = useState(0);
   const [gameHistory, setGameHistory] = useState([]);
-  const [savedShapes, setSavedShapes] = useState([]);
+  const [savedGames, setSavedGames] = useState([]);
   const [showGallery, setShowGallery] = useState(false);
   const [multiplayerData, setMultiplayerData] = useState(null);
 
-  // Load saved shapes from localStorage on app start
+  // Load saved games from localStorage on app start
   React.useEffect(() => {
-    const saved = localStorage.getItem('foraging-game-shapes');
+    const saved = localStorage.getItem('foraging-game-summaries');
     if (saved) {
       try {
-        setSavedShapes(JSON.parse(saved));
+        setSavedGames(JSON.parse(saved));
       } catch (error) {
-        console.error('Failed to load saved shapes:', error);
+        console.error('Failed to load saved games:', error);
       }
     }
   }, []);
 
-  // Save shapes to localStorage whenever savedShapes changes
+  // Save games to localStorage whenever savedGames changes
   React.useEffect(() => {
-    localStorage.setItem('foraging-game-shapes', JSON.stringify(savedShapes));
-  }, [savedShapes]);
+    localStorage.setItem('foraging-game-summaries', JSON.stringify(savedGames));
+  }, [savedGames]);
 
   const handleSelectGameMode = (mode) => {
     setGameMode(mode);
@@ -111,33 +111,15 @@ function App() {
     console.log('Returned to main menu');
   };
 
-  const handleSaveShape = (shapeData) => {
-    // If it's just a grid (old format), convert it to new format
-    if (Array.isArray(shapeData)) {
-      const convertedShapeData = {
-        grid: shapeData,
-        timestamp: new Date().toISOString(),
-        moves: totalMoves || 0,
-        players: playerNames,
-        gameMode: gameMode || 'offline'
-      };
-      setSavedShapes(prev => [convertedShapeData, ...prev]);
-      console.log('Shape saved to gallery (converted):', convertedShapeData);
-    } else {
-      // New format - save directly
-      setSavedShapes(prev => [shapeData, ...prev]);
-      console.log('Shape saved to gallery:', shapeData);
-    }
+  // Save a full game summary to gallery
+  const handleSaveGameSummary = (gameSummary) => {
+    setSavedGames(prev => [gameSummary, ...prev]);
+    console.log('Game summary saved to gallery:', gameSummary);
   };
 
-  const handleSaveToGallery = (shapeData) => {
-    setSavedShapes(prev => [shapeData, ...prev]);
-    console.log('Shape saved to gallery:', shapeData);
-  };
-
-  const handleLoadShape = (grid) => {
-    // This could be used to load a shape as a starting point for a new game
-    console.log('Load shape requested:', grid);
+  const handleLoadGame = (gameSummary) => {
+    // This could be used to load a game summary as a starting point for a new game
+    console.log('Load game requested:', gameSummary);
   };
 
   return (
@@ -151,7 +133,7 @@ function App() {
               onClick={() => setShowGallery(true)}
               disabled={appState === 'playing'}
             >
-              Gallery ({savedShapes.length})
+              Gallery ({savedGames.length})
             </button>
             <button 
               className="nav-button back-to-menu" 
@@ -167,7 +149,7 @@ function App() {
         <MainMenu
           onSelectGameMode={handleSelectGameMode}
           showGallery={() => setShowGallery(true)}
-          galleryCount={savedShapes.length}
+          galleryCount={savedGames.length}
         />
       )}
 
@@ -190,7 +172,7 @@ function App() {
           <BoardDrag
             currentPlayer={currentPlayer}
             onTurnEnd={handleTurnEnd}
-            onSave={handleSaveShape}
+            onSave={handleSaveGameSummary}
             gameState={appState}
             isGameActive={true}
             onShapeComplete={handleShapeComplete}
@@ -201,7 +183,7 @@ function App() {
           <BoardClick
             currentPlayer={currentPlayer}
             onTurnEnd={handleTurnEnd}
-            onSave={handleSaveShape}
+            onSave={handleSaveGameSummary}
             gameState={appState}
             isGameActive={true}
             onShapeComplete={handleShapeComplete}
@@ -218,16 +200,16 @@ function App() {
           totalMoves={totalMoves}
           history={gameHistory}
           onNewGame={handleNewGame}
-          onSaveToGallery={handleSaveToGallery}
+          onSaveGameSummary={handleSaveGameSummary}
           playerNames={playerNames}
         />
       )}
 
       {showGallery && (
         <Gallery
-          savedShapes={savedShapes}
+          savedGames={savedGames}
           onClose={() => setShowGallery(false)}
-          onLoadShape={handleLoadShape}
+          onLoadGame={handleLoadGame}
         />
       )}
     </div>

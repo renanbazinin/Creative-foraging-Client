@@ -399,6 +399,7 @@ export default function Board({
               }}
               disabled={roomManager && false}
             >
+              <br/>
               End Game
             </button>
             <button

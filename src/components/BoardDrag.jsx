@@ -218,6 +218,21 @@ export default function BoardDrag({
     };
     const handleGameSummary = (data) => {
       setSummary(data.summary);
+      // Save to localStorage with simple id
+      let savedGames = [];
+      try {
+        savedGames = JSON.parse(localStorage.getItem('foraging-game-summaries')) || [];
+      } catch {}
+      // Prevent duplicate save: check if already present by roomId
+      const alreadyExists = savedGames.some(g => g.roomId === data.summary.roomId);
+      if (!alreadyExists) {
+        const id = savedGames.length;
+        const summaryWithId = { ...data.summary, id };
+        localStorage.setItem('foraging-game-summaries', JSON.stringify([summaryWithId, ...savedGames]));
+        console.log('[BoardDrag] Saved multiplayer game summary to localStorage:', summaryWithId);
+      } else {
+        console.log('[BoardDrag] Game summary already saved for roomId, skipping duplicate.');
+      }
     };
 
     // Live opponent drag handlers
@@ -570,28 +585,15 @@ export default function BoardDrag({
     const grid = Array.from({ length: gridSize }, () => Array(gridSize).fill(0));
     tiles.forEach(({ x, y }) => {
       if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
-        // In other components y is flipped for display; gallery expects logical orientation
         grid[gridSize - 1 - y][x] = 1;
       }
     });
-
-    const shapeData = {
-      grid,
-      timestamp: new Date().toISOString(),
-      moves: moveCount,
-      players: isMultiplayer
-        ? { player1Name: 'You', player2Name: 'Opponent' }
-        : { player1Name: 'Player 1', player2Name: 'Player 2' },
-      gameMode: isMultiplayer ? 'multiplayer' : 'offline'
-    };
-    if (typeof onSave === 'function') {
-      onSave(shapeData);
-      setStatusMessage('Shape saved to gallery');
-      setTimeout(() => setStatusMessage(''), 2500);
-    }
+    // Only save shape to server if multiplayer, but DO NOT add to gallery
     if (isMultiplayer) {
       try { socketService.saveShape(grid, 'Shape'); } catch {}
     }
+    setStatusMessage('Shape saved');
+    setTimeout(() => setStatusMessage(''), 2500);
   };
 
   const renderGhostTile = () => {
@@ -829,13 +831,23 @@ export default function BoardDrag({
                     });
                     return { grid, user: `Player ${currentPlayer}` };
                   });
-                  setSummary({
+                  const newSummary = {
                     roomId: 'offline',
                     totalMoves: moveCount,
                     totalSaves: 0,
                     steps,
                     saves: []
-                  });
+                  };
+                  setSummary(newSummary);
+                  // Save to localStorage with simple id
+                  let savedGames = [];
+                  try {
+                    savedGames = JSON.parse(localStorage.getItem('foraging-game-summaries')) || [];
+                  } catch {}
+                  const id = savedGames.length;
+                  const summaryWithId = { ...newSummary, id };
+                  localStorage.setItem('foraging-game-summaries', JSON.stringify([summaryWithId, ...savedGames]));
+                  console.debug('[BoardDrag] Saved game summary to localStorage:', summaryWithId);
                 }
               }}
               disabled={moveCount === 0}

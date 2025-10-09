@@ -1,19 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Gallery.css';
+import SummaryPanel from './SummaryPanel';
 
-export default function Gallery({ savedShapes, onClose, onLoadShape }) {
-  const [selectedShape, setSelectedShape] = useState(null);
+export default function Gallery({ savedGames, onClose, onLoadGame }) {
+  const [selectedGame, setSelectedGame] = useState(null);
+  const [localGames, setLocalGames] = useState([]);
+  useEffect(() => {
+    const loaded = localStorage.getItem('foraging-game-summaries');
+    try {
+      const parsed = JSON.parse(loaded) || [];
+      setLocalGames(parsed);
+      console.log('[Gallery] Loaded from localStorage:', parsed);
+    } catch {
+      setLocalGames([]);
+      console.log('[Gallery] No valid game summaries found in localStorage.');
+    }
+  }, []);
 
-  if (!savedShapes || savedShapes.length === 0) {
+  if (!localGames || localGames.length === 0) {
     return (
       <div className="gallery-overlay">
         <div className="gallery">
           <div className="gallery-header">
-            <h2>Shape Gallery</h2>
+            <h2>Game Gallery</h2>
             <button className="close-button" onClick={onClose}>✕</button>
           </div>
           <div className="empty-gallery">
-            <p>No shapes saved yet. Create some masterpieces first!</p>
+            <p>No games saved yet. Play and save a game to see it here!</p>
           </div>
         </div>
       </div>
@@ -30,14 +43,16 @@ export default function Gallery({ savedShapes, onClose, onLoadShape }) {
     });
   };
 
-  const renderShape = (grid, size = 15) => {
+  // Compact preview for each game
+  const renderMiniGrid = (grid, size = 8) => {
+    if (!grid || !grid.length) return null;
     return (
-      <div className="mini-shape-grid" style={{ gridTemplateColumns: `repeat(${grid[0].length}, ${size}px)` }}>
+      <div className="gallery-mini-grid" style={{ gridTemplateColumns: `repeat(${grid[0].length}, ${size}px)` }}>
         {grid.map((row, rowIdx) =>
           row.map((cell, colIdx) => (
             <div
               key={`${rowIdx}-${colIdx}`}
-              className={`mini-shape-cell ${cell === 1 ? 'filled' : 'empty'}`}
+              className={`gallery-mini-cell ${cell === 1 ? 'filled' : 'empty'}`}
               style={{ width: `${size}px`, height: `${size}px` }}
             />
           ))
@@ -45,91 +60,69 @@ export default function Gallery({ savedShapes, onClose, onLoadShape }) {
       </div>
     );
   };
-
+  // Debug: log all games present in gallery
+  console.debug('[Gallery] Presenting games:', savedGames);
   return (
     <div className="gallery-overlay">
       <div className="gallery">
         <div className="gallery-header">
-          <h2>Shape Gallery ({savedShapes.length} shapes)</h2>
+          <h2>Game Gallery ({localGames.length} games)</h2>
           <button className="close-button" onClick={onClose}>✕</button>
         </div>
-        
         <div className="gallery-content">
-          {!selectedShape ? (
-            <div className="shapes-grid">
-              {savedShapes.map((shape, index) => (
-                <div
-                  key={index}
-                  className="shape-card"
-                  onClick={() => setSelectedShape(shape)}
-                >
-                  <div className="shape-preview">
-                    {renderShape(shape.grid, 12)}
-                  </div>
-                  <div className="shape-info">
-                    <div className="shape-date">{formatDate(shape.timestamp)}</div>
-                    <div className="shape-moves">{shape.moves} moves</div>
-                    {shape.players && (
-                      <div className="shape-players">
-                        {shape.players.player1Name} & {shape.players.player2Name}
+          {!selectedGame ? (
+            <div className="gallery-cards-grid">
+              {localGames.map((game, index) => {
+                console.debug('[Gallery] Showing game:', game);
+                return (
+                  <div
+                    key={game.id ?? index}
+                    className="gallery-card"
+                    onClick={() => setSelectedGame(game)}
+                    title="Click to view moves"
+                  >
+                    <div className="gallery-card-preview">
+                      {game.grid && renderMiniGrid(game.grid, 8)}
+                    </div>
+                    <div className="gallery-card-info">
+                      <div className="gallery-card-title">
+                        {game.players
+                          ? `${game.roomId}`
+                          : `Game ${index}`}
                       </div>
-                    )}
+                      <div className="gallery-card-moves">{game.moves} moves</div>
+                      {(game.player1Guess || game.player2Guess) && (
+                        <div className="gallery-card-guesses">
+                          <span>Guesses:</span>
+                          {game.player1Guess && (
+                            <span>{game.players?.player1Name || 'Player 1'}: "{game.player1Guess}"</span>
+                          )}
+                          {game.player2Guess && (
+                            <span>{game.players?.player2Name || 'Player 2'}: "{game.player2Guess}"</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
-            <div className="shape-detail">
-              <button 
-                className="back-button" 
-                onClick={() => setSelectedShape(null)}
+            <div className="gallery-detail">
+              <button
+                className="back-button"
+                onClick={() => setSelectedGame(null)}
               >
                 ← Back to Gallery
               </button>
-              
-              <div className="shape-detail-content">
-                <div className="large-shape">
-                  {renderShape(selectedShape.grid, 25)}
-                </div>
-                
-                <div className="shape-metadata">
-                  <h3>Shape Details</h3>
-                  <p><strong>Created:</strong> {formatDate(selectedShape.timestamp)}</p>
-                  <p><strong>Total Moves:</strong> {selectedShape.moves}</p>
-                  
-                  {selectedShape.players && (
-                    <div className="players-info">
-                      <p><strong>Players:</strong></p>
-                      <p>{selectedShape.players.player1Name} & {selectedShape.players.player2Name}</p>
-                    </div>
-                  )}
-                  
-                  {selectedShape.player1Guess && selectedShape.player2Guess && (
-                    <div className="guesses-info">
-                      <h4>What They Saw:</h4>
-                      <div className="guess-item">
-                        <strong>{selectedShape.players?.player1Name || 'Player 1'}:</strong>
-                        <span>"{selectedShape.player1Guess}"</span>
-                      </div>
-                      <div className="guess-item">
-                        <strong>{selectedShape.players?.player2Name || 'Player 2'}:</strong>
-                        <span>"{selectedShape.player2Guess}"</span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="shape-actions">
-                    <button
-                      className="load-shape-button"
-                      onClick={() => {
-                        onLoadShape(selectedShape.grid);
-                        onClose();
-                      }}
-                    >
-                      Load This Shape
-                    </button>
-                  </div>
-                </div>
+              <div className="gallery-detail-content">
+                <SummaryPanel
+                  summary={selectedGame}
+                  players={selectedGame.players ? [
+                    { id: 1, name: selectedGame.players.player1Name },
+                    { id: 2, name: selectedGame.players.player2Name }
+                  ] : []}
+                />
               </div>
             </div>
           )}

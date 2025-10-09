@@ -6,7 +6,7 @@ export default function GuessReveal({
   finalGrid, 
   totalMoves, 
   onNewGame, 
-  onSaveToGallery, 
+  onSaveGameSummary, 
   playerNames,
   history = []  // array of grids for replay
 }) {
@@ -86,16 +86,30 @@ export default function GuessReveal({
     setGuessesRevealed(true);
   };
 
-  const handleSaveShape = () => {
-    const shapeData = {
+  const handleSaveGame = () => {
+    // Build a full game summary for gallery
+    const gameSummary = {
       grid: finalGrid,
       moves: totalMoves,
       player1Guess,
       player2Guess,
       timestamp: new Date().toISOString(),
-      players: playerNames
+      players: playerNames,
+      // Add more summary info for gallery
+      steps: history,
+      roomId: (window && window.currentRoomId) || 'offline',
+      totalMoves: totalMoves,
+      totalSaves: 0,
+      saves: [],
+      startedBy: playerNames.player1Name,
+      endedBy: playerNames.player2Name,
+      perUser: {
+        [playerNames.player1Name]: { moves: totalMoves, saves: 0 },
+        [playerNames.player2Name]: { moves: 0, saves: 0 }
+      }
     };
-    onSaveToGallery(shapeData);
+    console.debug('[GuessReveal] Saving game summary to gallery:', gameSummary);
+    onSaveGameSummary(gameSummary);
   };
 
   return (
@@ -199,7 +213,7 @@ export default function GuessReveal({
           </div>
           
           <div className="action-buttons">
-            <button className="save-shape-button" onClick={handleSaveShape}>
+            <button className="save-shape-button" onClick={handleSaveGame}>
               Save to Gallery
             </button>
             <button className="new-game-button" onClick={onNewGame}>
