@@ -228,7 +228,7 @@ export default function BoardDrag({
       if (!alreadyExists) {
         const id = savedGames.length;
         const summaryWithId = { ...data.summary, id };
-        localStorage.setItem('foraging-game-summaries', JSON.stringify([summaryWithId, ...savedGames]));
+        localStorage.setItem('foraging-game-summaries', JSON.stringify([...savedGames, summaryWithId]));
         console.log('[BoardDrag] Saved multiplayer game summary to localStorage:', summaryWithId);
       } else {
         console.log('[BoardDrag] Game summary already saved for roomId, skipping duplicate.');
@@ -846,7 +846,7 @@ export default function BoardDrag({
                   } catch {}
                   const id = savedGames.length;
                   const summaryWithId = { ...newSummary, id };
-                  localStorage.setItem('foraging-game-summaries', JSON.stringify([summaryWithId, ...savedGames]));
+                  localStorage.setItem('foraging-game-summaries', JSON.stringify([...savedGames, summaryWithId]));
                   console.debug('[BoardDrag] Saved game summary to localStorage:', summaryWithId);
                 }
               }}
