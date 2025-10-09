@@ -45,9 +45,13 @@ export default function SummaryPanel({ summary, players }) {
   }
 
   // Build a lookup for saved steps
+  // Map step index -> Set of user ids who saved that step (deduplicated)
   const savedSteps = {};
   (summary.saves || []).forEach(s => {
-    savedSteps[s.step] = s.user;
+    const idx = Number(s.step);
+    if (!Number.isFinite(idx)) return;
+    if (!savedSteps[idx]) savedSteps[idx] = new Set();
+    savedSteps[idx].add(s.user);
   });
 
   return (
@@ -66,14 +70,17 @@ export default function SummaryPanel({ summary, players }) {
           </tr>
         </thead>
         <tbody>
-          {(summary.steps || []).map((step, i) => (
-            <tr key={i}>
-              <td>{i + 1}</td>
-              <td>{getName(step.user)}</td>
-              <td>{renderGrid(step.grid)}</td>
-              <td>{savedSteps[i] ? `Saved by ${getName(savedSteps[i])}` : ''}</td>
-            </tr>
-          ))}
+          {(summary.steps || []).map((step, i) => {
+            const savers = savedSteps[i] ? Array.from(savedSteps[i]) : [];
+            return (
+              <tr key={i}>
+                <td>{i === 0 ? '0 (init)' : i}</td>
+                <td>{getName(step.user)}</td>
+                <td>{renderGrid(step.grid)}</td>
+                <td>{savers.length ? `Saved by ${savers.map(id => getName(id)).join(', ')}` : ''}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
