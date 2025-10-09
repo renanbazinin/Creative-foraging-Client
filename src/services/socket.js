@@ -168,6 +168,16 @@ class SocketService {
       this.emit('game-completed', data);
     });
 
+    this.socket.on('game-ended', (data) => {
+      console.log('[Client Socket] Game ended:', data);
+      this.emit('game-ended', data);
+    });
+
+    this.socket.on('game-summary', (data) => {
+      console.log('[Client Socket] Game summary:', data);
+      this.emit('game-summary', data);
+    });
+
     this.socket.on('game-reset', (data) => {
       console.log('[Client Socket] Game reset:', data);
       this.emit('game-reset', data);
@@ -344,6 +354,13 @@ class SocketService {
     this.socket.emit('start-game', {
       roomId: this.currentRoomId
     });
+  }
+
+  endGame() {
+    if (!this.socket || !this.connected || !this.currentRoom) {
+      throw new Error('Not connected to server or not in a room');
+    }
+    this.socket.emit('end-game', { roomId: this.currentRoom });
   }
 
   getCurrentRoom() {
