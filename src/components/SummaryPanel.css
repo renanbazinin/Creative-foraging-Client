@@ -1,0 +1,26 @@
+.summary-panel {
+  background: #181818;
+  border: 2px solid #0f0;
+  border-radius: 8px;
+  padding: 18px 24px;
+  margin-top: 24px;
+  color: #eee;
+  box-shadow: 0 2px 12px #000a;
+}
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+.summary-table th, .summary-table td {
+  border-bottom: 1px solid #333;
+  padding: 6px 10px;
+  text-align: center;
+}
+.summary-table th {
+  background: #222;
+  color: #0f0;
+}
+.summary-table td {
+  background: #111;
+}

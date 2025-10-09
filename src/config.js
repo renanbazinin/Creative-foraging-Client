@@ -9,8 +9,8 @@
 //
 
 const PROD_API = 'https://foragingserver-latest.onrender.com';
-//const LOCAL_API = 'http://localhost:3001';
-const LOCAL_API = 'https://foragingserver-latest.onrender.com';
+const LOCAL_API = 'http://localhost:3001';
+//const LOCAL_API = 'https://foragingserver-latest.onrender.com';
 function normalize(url) {
   return url ? url.replace(/\/+$/, '') : url;
 }

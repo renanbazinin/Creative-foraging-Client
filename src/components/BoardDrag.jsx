@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import SummaryPanel from './SummaryPanel';
 import { allowedMoves } from '../utils/grid';
 import socketService from '../services/socket';
 import './Board.css';
@@ -33,6 +34,7 @@ export default function BoardDrag({
   const [isGameLocked, setIsGameLocked] = useState(false);
   const [currentPlayerId, setCurrentPlayerId] = useState(null);
   const [connectedPlayers, setConnectedPlayers] = useState([]);
+  const [summary, setSummary] = useState(null);
 
   const [dragState, setDragState] = useState({
     index: null,
@@ -211,6 +213,13 @@ export default function BoardDrag({
       }
     };
 
+    const handleGameEnded = (data) => {
+      setStatusMessage('Game ended');
+    };
+    const handleGameSummary = (data) => {
+      setSummary(data.summary);
+    };
+
     // Live opponent drag handlers
     const handleOpponentDrag = (data) => {
       if (!boardRef.current) return;
@@ -272,6 +281,8 @@ export default function BoardDrag({
     socketService.on('move-lock-denied', handleMoveLockDenied);
     socketService.on('game-state-update', handleGameStateUpdate);
     socketService.on('move-accepted', handleMoveAccepted);
+  socketService.on('game-ended', handleGameEnded);
+  socketService.on('game-summary', handleGameSummary);
     socketService.on('opponent-drag', handleOpponentDrag);
     socketService.on('opponent-drag-end', handleOpponentDragEnd);
     socketService.on('lock-released', handleLockReleased);
@@ -281,6 +292,8 @@ export default function BoardDrag({
       socketService.off('move-lock-denied', handleMoveLockDenied);
       socketService.off('game-state-update', handleGameStateUpdate);
       socketService.off('move-accepted', handleMoveAccepted);
+  socketService.off('game-ended', handleGameEnded);
+  socketService.off('game-summary', handleGameSummary);
       socketService.off('opponent-drag', handleOpponentDrag);
       socketService.off('opponent-drag-end', handleOpponentDragEnd);
       socketService.off('lock-released', handleLockReleased);
@@ -576,6 +589,9 @@ export default function BoardDrag({
       setStatusMessage('Shape saved to gallery');
       setTimeout(() => setStatusMessage(''), 2500);
     }
+    if (isMultiplayer) {
+      try { socketService.saveShape(grid, 'Shape'); } catch {}
+    }
   };
 
   const renderGhostTile = () => {
@@ -761,16 +777,77 @@ export default function BoardDrag({
       <div className="status-bar">
         {statusMessage ? <p>{statusMessage}</p> : <p>{dragState.isDragging ? 'Release to drop' : 'Hold a block to move it'}</p>}
         {gameState === 'playing' && (
-          <button
-            className="save-shape-button"
-            style={{ marginTop: '8px' }}
-            onClick={handleSaveCurrentShape}
-            disabled={moveCount === 0}
-          >
-            Save Shape to Gallery
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 12 }}>
+            <button
+              className="save-shape-button"
+              style={{
+                background: '#0f0',
+                color: '#111',
+                fontWeight: 'bold',
+                border: 'none',
+                borderRadius: 6,
+                padding: '10px 24px',
+                fontSize: '1.1em',
+                boxShadow: '0 2px 8px #0f08',
+                cursor: moveCount === 0 ? 'not-allowed' : 'pointer',
+                opacity: moveCount === 0 ? 0.5 : 1,
+                transition: 'all 0.2s',
+              }}
+              onClick={handleSaveCurrentShape}
+              disabled={moveCount === 0}
+            >
+              Save Shape to Gallery
+            </button>
+            <button
+              className="end-game-button"
+              style={{
+                background: 'linear-gradient(90deg,#0f0 60%,#222 100%)',
+                color: '#111',
+                fontWeight: 'bold',
+                border: '2px solid #0f0',
+                borderRadius: 6,
+                padding: '10px 24px',
+                fontSize: '1.1em',
+                boxShadow: '0 2px 12px #0f08',
+                cursor: moveCount === 0 ? 'not-allowed' : 'pointer',
+                opacity: moveCount === 0 ? 0.5 : 1,
+                marginLeft: 0,
+                transition: 'all 0.2s',
+              }}
+              onClick={() => {
+                if (isMultiplayer) {
+                  try { socketService.endGame(); } catch (e) { setStatusMessage(e.message); }
+                } else {
+                  setStatusMessage('Game ended');
+                  // Build steps for summary
+                  const steps = history.map((tilesAtStep, i) => {
+                    const grid = Array.from({ length: gridSize }, () => Array(gridSize).fill(0));
+                    tilesAtStep.forEach(({ x, y }) => {
+                      if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
+                        grid[gridSize - 1 - y][x] = 1;
+                      }
+                    });
+                    return { grid, user: `Player ${currentPlayer}` };
+                  });
+                  setSummary({
+                    roomId: 'offline',
+                    totalMoves: moveCount,
+                    totalSaves: 0,
+                    steps,
+                    saves: []
+                  });
+                }
+              }}
+              disabled={moveCount === 0}
+            >
+              End Game
+            </button>
+          </div>
         )}
       </div>
+      {summary && (
+        <SummaryPanel summary={summary} players={connectedPlayers} />
+      )}
     </div>
   );
 }

@@ -33,6 +33,7 @@ export default function Board({
   const [history, setHistory] = useState([]);
   const [replayIndex, setReplayIndex] = useState(0);
   const [isReplaying, setIsReplaying] = useState(false);
+  const [summary, setSummary] = useState(null);
   const replayInterval = useRef(null);
   
   // Multiplayer specific states
@@ -126,6 +127,16 @@ export default function Board({
         }
       };
 
+      const handleGameEnded = (data) => {
+        console.log('Game ended:', data);
+        setStatusMessage('Game ended');
+      };
+
+      const handleGameSummary = (data) => {
+        console.log('Game summary received:', data);
+        setSummary(data.summary);
+      };
+
       const handleAllowedMoves = (data) => {
         if (data.tileIndex === selectedIndex) {
           setMoves(data.moves);
@@ -169,6 +180,8 @@ export default function Board({
       socketService.on('move-accepted', handleMoveAccepted);
       socketService.on('move-rejected', handleMoveRejected);
       socketService.on('game-completed', handleGameCompleted);
+  socketService.on('game-ended', handleGameEnded);
+  socketService.on('game-summary', handleGameSummary);
       socketService.on('allowed-moves', handleAllowedMoves);
       socketService.on('lock-acquired', handleLockAcquired);
       socketService.on('lock-released', handleLockReleased);
@@ -183,6 +196,8 @@ export default function Board({
         socketService.off('move-accepted', handleMoveAccepted);
         socketService.off('move-rejected', handleMoveRejected);
         socketService.off('game-completed', handleGameCompleted);
+  socketService.off('game-ended', handleGameEnded);
+  socketService.off('game-summary', handleGameSummary);
         socketService.off('allowed-moves', handleAllowedMoves);
         socketService.off('lock-acquired', handleLockAcquired);
         socketService.off('lock-released', handleLockReleased);
@@ -378,6 +393,15 @@ export default function Board({
               Complete Shape
             </button>
             <button
+              className="end-game-button"
+              onClick={() => {
+                try { socketService.endGame(); } catch (e) { setStatusMessage(e.message); }
+              }}
+              disabled={roomManager && false}
+            >
+              End Game
+            </button>
+            <button
               className="save-shape-button"
               onClick={() => {
                 const grid = Array.from({ length: gridSize }, () => Array(gridSize).fill(0));
@@ -396,6 +420,7 @@ export default function Board({
                 };
                 
                 onSave(shapeData);
+                try { socketService.saveShape(grid, 'Shape'); } catch {}
                 setStatusMessage('Shape saved to gallery!');
                 setTimeout(() => setStatusMessage(''), 3000);
               }}
@@ -422,6 +447,25 @@ export default function Board({
           disabled={moveCount === 0}
         >
           Complete Shape
+        </button>
+        <button 
+          className="end-game-button" 
+          onClick={() => {
+            // Offline: just mark completed and show local summary
+            setStatusMessage('Game ended');
+            const localSummary = {
+              roomId: 'offline',
+              perUser: { 'Player 1': { moves: moveCount, saves: 0 }, 'Player 2': { moves: 0, saves: 0 } },
+              totalMoves: moveCount,
+              totalSaves: 0,
+              moves: history.slice(1).map((tilesAtStep, i) => ({ user: `Player ${currentPlayer}`, step: i + 1 })),
+              saves: []
+            };
+            setSummary(localSummary);
+          }}
+          disabled={moveCount === 0}
+        >
+          End Game
         </button>
         <button
           className="save-shape-button"
@@ -554,6 +598,51 @@ export default function Board({
             onChange={e => { setIsReplaying(false); setReplayIndex(+e.target.value); }}
           />
           <span>Move {replayIndex}</span>
+        </div>
+      )}
+
+      {summary && (
+        <div className="summary-panel" style={{ marginTop: 16 }}>
+          <h3>Game Summary</h3>
+          <div style={{ display: 'flex', gap: 24 }}>
+            <div>
+              <p>Room: {summary.roomId}</p>
+              <p>Total Moves: {summary.totalMoves}</p>
+              <p>Total Saves: {summary.totalSaves}</p>
+              {summary.startedBy && <p>Started by: {summary.startedBy}</p>}
+              {summary.endedBy && <p>Ended by: {summary.endedBy}</p>}
+            </div>
+            <div>
+              <table style={{ borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={{ borderBottom: '1px solid #444', padding: '4px 8px' }}>Player</th>
+                    <th style={{ borderBottom: '1px solid #444', padding: '4px 8px' }}>Moves</th>
+                    <th style={{ borderBottom: '1px solid #444', padding: '4px 8px' }}>Saves</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(summary.perUser || {}).map(([user, stats]) => (
+                    <tr key={user}>
+                      <td style={{ borderBottom: '1px solid #333', padding: '4px 8px' }}>{user}</td>
+                      <td style={{ borderBottom: '1px solid #333', padding: '4px 8px' }}>{stats.moves}</td>
+                      <td style={{ borderBottom: '1px solid #333', padding: '4px 8px' }}>{stats.saves}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {summary.saves && summary.saves.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <h4>Saved Shapes</h4>
+              <ul>
+                {summary.saves.map((s, i) => (
+                  <li key={i}>{s.user} saved "{s.name}" at {new Date(s.ts).toLocaleTimeString()}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>
