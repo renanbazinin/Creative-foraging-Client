@@ -326,11 +326,39 @@ export default function MultiplayerLobby({ onGameStart, onBackToMenu }) {
     }
   };
 
+  const playDingSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Configure the sound
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // Frequency in Hz
+      oscillator.type = 'sine'; // Sine wave for a clean tone
+      
+      // Envelope for the sound (fade out)
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      
+      // Play the sound
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (error) {
+      console.warn('Failed to play ding sound:', error);
+    }
+  };
+
   const handleStartGame = () => {
     console.log('[Client Lobby] Start game button clicked');
     console.log('  - Current room:', currentRoom?.roomId);
     console.log('  - Players count:', players.length);
     console.log('  - Can start game:', canStartGame);
+    
+    // Play ding sound
+    playDingSound();
     
     // Check if socket service actually has room state
     const socketRoomId = socketService.getCurrentRoom();
