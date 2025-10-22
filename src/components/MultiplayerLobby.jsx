@@ -482,83 +482,85 @@ export default function MultiplayerLobby({ onGameStart, onBackToMenu }) {
     return (
       <div className="lobby-content">
         <div className="player-setup">
-          <h3>Enter Your Name</h3>
+          <h3>Your Name</h3>
           <input
             type="text"
-            placeholder="Your name"
+            placeholder="Enter your name"
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
             maxLength={20}
             disabled={isLoading}
+            className="name-input"
           />
-          {isLoadingNames && <div style={{ fontSize: '0.6rem', opacity: 0.5 }}>Loading name...</div>}
+          {isLoadingNames && <div className="loading-hint">Generating name...</div>}
         </div>
 
-        <div className="room-actions">
-          <div className="create-room-section">
-            <h3>Create New Room</h3>
-            <button 
-              className="create-room-button"
-              onClick={handleCreateRoom}
-              disabled={!playerName.trim() || isLoading}
-            >
-              {isLoading ? 'Creating...' : 'Create Room'}
-            </button>
-          </div>
+        <div className="lobby-main">
+          <div className="action-cards">
+            <div className="action-card create-card">
+              <div className="card-icon">+</div>
+              <h3>Create New Room</h3>
+              <p className="card-description">Start a new game and share the room code with a friend</p>
+              <button 
+                className="action-button create-button"
+                onClick={handleCreateRoom}
+                disabled={!playerName.trim() || isLoading}
+              >
+                {isLoading ? 'Creating...' : 'Create Room'}
+              </button>
+            </div>
 
-          <div className="join-room-section">
-            <h3>Join Room by ID</h3>
-            <div className="join-by-id">
+            <div className="action-card join-card">
+              <div className="card-icon">#</div>
+              <h3>Join by Room ID</h3>
+              <p className="card-description">Enter a room code to join an existing game</p>
               <input
                 type="text"
-                placeholder="Room ID"
+                placeholder="ROOM ID"
                 value={roomId}
                 onChange={(e) => setRoomId(e.target.value.toUpperCase())}
                 maxLength={6}
                 disabled={isLoading}
+                className="room-id-input"
               />
               <button 
-                className="join-room-button"
+                className="action-button join-button"
                 onClick={handleJoinRoomById}
                 disabled={!playerName.trim() || !roomId.trim() || isLoading}
               >
-                {isLoading ? 'Joining...' : 'Join'}
+                {isLoading ? 'Joining...' : 'Join Room'}
               </button>
             </div>
           </div>
 
+          <div className="divider">
+            <span>OR</span>
+          </div>
+
           <div className="available-rooms-section">
-            <div className="available-rooms-header">
+            <div className="section-header">
               <h3>Available Rooms</h3>
-             {/* <button 
-                className="refresh-rooms-button"
-                onClick={handleRefreshRooms}
-                disabled={isRefreshing || connectionStatus !== 'connected' || isLoading}
-                title="Refresh available rooms"
-              >
-                {isRefreshing ? '⟳' : '↻'}
-              </button>*/}
+              <div className="refresh-indicator">
+                {autoRefreshInterval && <span className="live-badge">🟢 Live</span>}
+                {isRefreshing && <span className="refreshing-text">Refreshing...</span>}
+              </div>
             </div>
-            <div className="rooms-status">
-              {autoRefreshInterval && (
-                <p className="auto-refresh-indicator">
-                  🟢
-                </p>
-              )}
-              {isRefreshing && (
-                <p className="refresh-status">Refreshing...</p>
-              )}
-            </div>
+            
             {availableRooms.length === 0 ? (
-              <p className="no-rooms">No rooms available</p>
+              <div className="empty-state">
+                <div className="empty-icon">🎮</div>
+                <p>No available rooms</p>
+                <p className="empty-hint">Create a new room or enter a room ID to start playing!</p>
+              </div>
             ) : (
-              <div className="rooms-list">
+              <div className="rooms-grid">
                 {availableRooms.map((room) => (
-                  <div key={room.roomId} className="room-item">
-                    <div className="room-details">
-                      <span className="room-id">{room.roomId}</span>
-                      <span className="room-players">
-                        {room.players.length}/2 players
+                  <div key={room.roomId} className="room-card">
+                    <div className="room-card-header">
+                      <span className="room-code">{room.roomId}</span>
+                      <span className="player-count">
+                        <span className="player-icon">👥</span>
+                        {room.players.length}/2
                       </span>
                     </div>
                     <button 
@@ -566,7 +568,7 @@ export default function MultiplayerLobby({ onGameStart, onBackToMenu }) {
                       onClick={() => handleJoinRoom(room.roomId)}
                       disabled={!playerName.trim() || room.players.length >= 2 || isLoading}
                     >
-                      Join
+                      {room.players.length >= 2 ? 'Full' : 'Join Room'}
                     </button>
                   </div>
                 ))}
