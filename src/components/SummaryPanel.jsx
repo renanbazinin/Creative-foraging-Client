@@ -1,5 +1,6 @@
 import React from 'react';
 import './SummaryPanel.css';
+import { exportAsCSV, exportAsJSON } from '../utils/exportGameSummary';
 
 function renderGrid(grid, cellSize = 20) {
   return (
@@ -60,6 +61,24 @@ export default function SummaryPanel({ summary, players }) {
       <div style={{ marginBottom: 12 }}>
         <span>Room: {summary.roomId}</span> | <span>Total Moves: {summary.totalMoves}</span> | <span>Total Saves: {summary.totalSaves}</span>
       </div>
+      
+      <div className="export-buttons" style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
+        <button 
+          onClick={() => exportAsJSON(summary, players)}
+          className="export-button export-json"
+          title="Download game summary as JSON"
+        >
+          Download JSON
+        </button>
+        <button 
+          onClick={() => exportAsCSV(summary, players)}
+          className="export-button export-csv"
+          title="Download game summary as CSV"
+        >
+          Download CSV
+        </button>
+      </div>
+
       <table className="summary-table">
         <thead>
           <tr>
